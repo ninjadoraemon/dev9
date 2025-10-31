@@ -432,7 +432,7 @@ async def clear_cart(current_user: dict = Depends(get_current_user)):
 @api_router.post("/orders/create")
 async def create_order(
     request: Request,
-    order_request: OrderCreateRequest = None,
+    order_request: Optional[OrderCreateRequest] = None,
     current_user: Optional[dict] = Depends(get_current_user_flexible)
 ):
     """

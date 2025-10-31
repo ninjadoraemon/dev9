@@ -373,7 +373,7 @@ class ClerkPaymentTester:
         # Test 1: Verify order exists in database
         print("   Checking order in database...")
         try:
-            if self.db:
+            if self.db is not None:
                 order = self.db.orders.find_one({"id": self.clerk_order["order_id"]})
                 if order:
                     print(f"   ✅ Order found in database")

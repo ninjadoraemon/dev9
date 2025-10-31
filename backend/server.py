@@ -505,7 +505,14 @@ async def create_order(
     }
 
 @api_router.post("/orders/verify")
-async def verify_payment(verification: PaymentVerification, current_user: dict = Depends(get_current_user)):
+async def verify_payment(
+    verification: PaymentVerification,
+    current_user: Optional[dict] = Depends(get_current_user_flexible)
+):
+    """
+    Verify payment for both JWT and Clerk authenticated users.
+    For Clerk users: Provide clerk_id in request body
+    """
     try:
         # Verify signature
         razorpay_client.utility.verify_payment_signature({
@@ -514,11 +521,23 @@ async def verify_payment(verification: PaymentVerification, current_user: dict =
             'razorpay_signature': verification.razorpay_signature
         })
         
-        # Update order
+        # Get order
         order = await db.orders.find_one({"id": verification.order_id}, {"_id": 0})
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
         
+        # Determine user
+        user = None
+        if current_user:
+            user = current_user
+        elif verification.clerk_id:
+            user = await db.users.find_one({"clerk_id": verification.clerk_id}, {"_id": 0})
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+        else:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Update order
         await db.orders.update_one(
             {"id": verification.order_id},
             {"$set": {
@@ -530,15 +549,16 @@ async def verify_payment(verification: PaymentVerification, current_user: dict =
         # Add products to user's purchased list
         product_ids = [item['product_id'] for item in order['items']]
         await db.users.update_one(
-            {"id": current_user['id']},
+            {"id": user['id']},
             {"$addToSet": {"purchased_products": {"$each": product_ids}}}
         )
         
-        # Clear cart
-        await db.carts.update_one(
-            {"user_id": current_user['id']},
-            {"$set": {"items": []}}
-        )
+        # Clear cart (only for JWT users with backend cart)
+        if current_user:
+            await db.carts.update_one(
+                {"user_id": user['id']},
+                {"$set": {"items": []}}
+            )
         
         return {"message": "Payment verified successfully", "status": "paid"}
     except Exception as e:

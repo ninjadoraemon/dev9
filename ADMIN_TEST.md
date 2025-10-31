@@ -44,7 +44,7 @@ curl -X POST http://localhost:8001/api/auth/login \
 
 ## How to Test Admin Login:
 
-1. **Go to:** `https://repo-checker-18.preview.emergentagent.com/admin`
+1. **Go to:** `https://payment-ui-repair-1.preview.emergentagent.com/admin`
 
 2. **Enter Credentials:**
    - Email: `admin@digitalstore.com`

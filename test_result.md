@@ -102,9 +102,21 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Enhanced e-commerce platform with: 1) Added to cart popup notification 2) Prevent duplicate products in cart 3) Clerk authentication integration 4) Advanced video player with chapters, speed control, quality selection 5) Auto-distribute demo course to all users 6) Better product detail pages for software and courses"
+user_problem_statement: "Enhanced e-commerce platform with: 1) Added to cart popup notification 2) Prevent duplicate products in cart 3) Clerk authentication integration 4) Advanced video player with chapters, speed control, quality selection 5) Auto-distribute demo course to all users 6) Better product detail pages for software and courses. LATEST UPDATE: 7) Fix payment processing error for Clerk users - enable complete checkout flow with Razorpay integration, proper loading states, error handling, and success confirmation."
 
 backend:
+  - task: "Clerk user payment processing"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "FIXED payment issue for Clerk users. Created flexible authentication (get_current_user_flexible) that supports both JWT and Clerk users. Modified POST /api/orders/create to accept OrderCreateRequest with clerk_id and cart_items for Clerk users with localStorage cart. Modified POST /api/orders/verify to accept clerk_id in PaymentVerification. Both endpoints now work with Clerk authentication by looking up user via clerk_id in database. Razorpay integration works for both auth types."
+
   - task: "Cart duplicate prevention"
     implemented: true
     working: true

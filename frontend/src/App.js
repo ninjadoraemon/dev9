@@ -779,6 +779,7 @@ const ProductDetailPage = ({ clerkUser, user, token, toast }) => {
 
 const CartPage = ({ clerkUser, user, token, toast }) => {
   const [cart, setCart] = useState({ items: [] });
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const navigate = useNavigate();
 
   const isAuthenticated = clerkUser || (user && token);
@@ -828,17 +829,40 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
   };
 
   const checkout = async () => {
-    if (clerkUser) {
-      sonnerToast.info('Clerk checkout coming soon! For now, admin users can process orders.');
+    if (cart.items.length === 0) {
+      sonnerToast.error('Your cart is empty');
       return;
     }
+
+    setIsCheckoutLoading(true);
     
     try {
-      const response = await axios.post(
-        `${API}/orders/create`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      let response;
+      
+      if (clerkUser) {
+        // Clerk user checkout - send cart items in request body
+        const cartItems = cart.items.map(item => ({
+          id: item.product.id,
+          quantity: item.quantity || 1
+        }));
+        
+        response = await axios.post(
+          `${API}/orders/create`,
+          {
+            clerk_id: clerkUser.id,
+            cart_items: cartItems
+          }
+        );
+      } else if (token) {
+        // JWT user checkout - cart is in backend
+        response = await axios.post(
+          `${API}/orders/create`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else {
+        throw new Error('Authentication required');
+      }
 
       const options = {
         key: response.data.key_id,
@@ -849,20 +873,47 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
         description: 'Digital Products Purchase',
         handler: async (razorpayResponse) => {
           try {
-            await axios.post(
-              `${API}/orders/verify`,
-              {
-                razorpay_order_id: razorpayResponse.razorpay_order_id,
-                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                razorpay_signature: razorpayResponse.razorpay_signature,
-                order_id: response.data.order_id
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            sonnerToast.success('Payment successful!');
-            navigate('/dashboard');
+            const verificationData = {
+              razorpay_order_id: razorpayResponse.razorpay_order_id,
+              razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+              razorpay_signature: razorpayResponse.razorpay_signature,
+              order_id: response.data.order_id
+            };
+
+            // Add clerk_id for Clerk users
+            if (clerkUser) {
+              verificationData.clerk_id = clerkUser.id;
+            }
+
+            if (token) {
+              await axios.post(
+                `${API}/orders/verify`,
+                verificationData,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+            } else {
+              await axios.post(
+                `${API}/orders/verify`,
+                verificationData
+              );
+            }
+
+            // Clear Clerk user's localStorage cart
+            if (clerkUser) {
+              localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify([]));
+            }
+
+            sonnerToast.success('🎉 Payment successful! Your products are now available.');
+            setIsCheckoutLoading(false);
+            
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 1500);
           } catch (error) {
-            sonnerToast.error('Payment verification failed');
+            console.error('Payment verification error:', error);
+            sonnerToast.error('Payment verification failed. Please contact support if amount was deducted.');
+            setIsCheckoutLoading(false);
           }
         },
         prefill: {
@@ -871,13 +922,29 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
         },
         theme: {
           color: '#0f172a'
+        },
+        modal: {
+          ondismiss: function() {
+            setIsCheckoutLoading(false);
+            sonnerToast.info('Payment cancelled');
+          }
         }
       };
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (error) {
-      sonnerToast.error('Checkout failed');
+      console.error('Checkout error:', error);
+      setIsCheckoutLoading(false);
+      
+      if (error.response?.status === 400) {
+        sonnerToast.error(error.response.data.detail || 'Invalid cart data');
+      } else if (error.response?.status === 401) {
+        sonnerToast.error('Authentication required. Please sign in again.');
+        navigate('/signin');
+      } else {
+        sonnerToast.error('Checkout failed. Please try again or contact support.');
+      }
     }
   };
 

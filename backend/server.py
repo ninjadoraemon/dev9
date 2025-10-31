@@ -430,17 +430,17 @@ async def clear_cart(current_user: dict = Depends(get_current_user)):
 
 # Payment & Order Routes
 @api_router.post("/orders/create")
-async def create_order(
-    request: Request,
-    current_user: Optional[dict] = Depends(get_current_user_flexible)
-):
+async def create_order(request: Request):
     """
     Create order for both JWT and Clerk authenticated users.
     For Clerk users: Provide clerk_id and cart_items in request body
-    For JWT users: Cart is fetched from database
+    For JWT users: Cart is fetched from database using Authorization header
     """
     user = None
     cart_items = []
+    
+    # Try to get JWT user first
+    current_user = await get_current_user_flexible(request)
     
     # Try to get request body for Clerk users
     order_request = None

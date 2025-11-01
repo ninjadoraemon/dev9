@@ -580,6 +580,80 @@ async def verify_payment(
         )
         raise HTTPException(status_code=400, detail=f"Payment verification failed: {str(e)}")
 
+@api_router.post("/orders/claim-free")
+async def claim_free_products(request: Request):
+    """
+    Claim free products (price = 0) without payment.
+    For Clerk users: Provide clerk_id and cart_items in request body
+    For JWT users: Cart is fetched from database using Authorization header
+    """
+    user = None
+    cart_items = []
+    
+    # Try to get JWT user first
+    current_user = await get_current_user_flexible(request)
+    
+    # Try to get request body for Clerk users
+    order_request = None
+    try:
+        body = await request.json()
+        if body:
+            order_request = OrderCreateRequest(**body)
+    except:
+        pass
+    
+    # Determine user and cart source
+    if current_user:
+        # JWT authenticated user
+        user = current_user
+        cart = await db.carts.find_one({"user_id": user['id']})
+        if not cart or not cart.get('items'):
+            raise HTTPException(status_code=400, detail="Cart is empty")
+        cart_items = cart['items']
+    elif order_request and order_request.clerk_id:
+        # Clerk authenticated user
+        user = await db.users.find_one({"clerk_id": order_request.clerk_id}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if not order_request.cart_items:
+            raise HTTPException(status_code=400, detail="Cart is empty")
+        cart_items = order_request.cart_items
+    else:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Verify all products are free and collect product IDs
+    product_ids = []
+    for item in cart_items:
+        product_id = item.get('product_id') or item.get('id')
+        product = await db.products.find_one({"id": product_id}, {"_id": 0})
+        if not product:
+            continue
+        if product['price'] != 0:
+            raise HTTPException(status_code=400, detail="Only free products can be claimed without payment")
+        product_ids.append(product['id'])
+    
+    if not product_ids:
+        raise HTTPException(status_code=400, detail="No valid free products in cart")
+    
+    # Add products to user's purchased list
+    await db.users.update_one(
+        {"id": user['id']},
+        {"$addToSet": {"purchased_products": {"$each": product_ids}}}
+    )
+    
+    # Clear cart (only for JWT users with backend cart)
+    if current_user:
+        await db.carts.update_one(
+            {"user_id": user['id']},
+            {"$set": {"items": []}}
+        )
+    
+    return {
+        "message": "Free products claimed successfully",
+        "products_claimed": len(product_ids),
+        "product_ids": product_ids
+    }
+
 @api_router.get("/orders")
 async def get_orders(current_user: dict = Depends(get_current_user)):
     orders = await db.orders.find({"user_id": current_user['id']}, {"_id": 0}).sort("created_at", -1).to_list(1000)

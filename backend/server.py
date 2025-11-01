@@ -697,22 +697,49 @@ async def get_clerk_purchased_products(clerk_id: str):
 async def download_product(product_id: str):
     """
     Proxy endpoint to serve product download files.
-    Helps bypass Cloudinary access issues.
+    Fetches from Cloudinary and serves directly to bypass access restrictions.
     """
+    import httpx
+    from fastapi.responses import StreamingResponse
+    
     try:
         # Get product
         product = await db.products.find_one({"id": product_id}, {"_id": 0})
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
         
-        download_url = product.get('download_link')
+        download_url = product.get('download_link', '')
         if not download_url:
             raise HTTPException(status_code=404, detail="Download link not available")
         
-        # For now, just redirect to the Cloudinary URL
-        # In production, you might want to fetch and stream the file
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=download_url)
+        # Revert to original URL if it was changed to /raw/
+        if '/raw/upload/' in download_url:
+            download_url = download_url.replace('/raw/upload/', '/image/upload/')
+        
+        # Fetch the file from Cloudinary
+        async with httpx.AsyncClient() as client:
+            response = await client.get(download_url)
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to fetch file from storage"
+                )
+            
+            # Determine filename from URL or product name
+            filename = product.get('name', 'download').replace(' ', '_') + '.pdf'
+            
+            # Stream the file back to user
+            return StreamingResponse(
+                iter([response.content]),
+                media_type='application/pdf',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{filename}"',
+                    'Content-Length': str(len(response.content))
+                }
+            )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 

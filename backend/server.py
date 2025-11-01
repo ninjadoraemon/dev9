@@ -940,6 +940,35 @@ async def seed_admin():
     await db.users.insert_one(admin_dict)
     return {"message": "Admin user created", "email": "admin@digitalstore.com", "password": "admin123"}
 
+@api_router.post("/admin/fix-download-links")
+async def fix_download_links(admin_user: dict = Depends(get_admin_user)):
+    """
+    Fix existing product download links by replacing /image/ with /raw/ in Cloudinary URLs.
+    This is a temporary fix for products uploaded before the resource_type fix.
+    Note: Admin should re-upload files properly for permanent fix.
+    """
+    try:
+        products = await db.products.find({}, {"_id": 0}).to_list(1000)
+        fixed_count = 0
+        
+        for product in products:
+            download_link = product.get('download_link', '')
+            if download_link and '/image/upload/' in download_link:
+                # Replace /image/upload/ with /raw/upload/
+                new_link = download_link.replace('/image/upload/', '/raw/upload/')
+                await db.products.update_one(
+                    {"id": product['id']},
+                    {"$set": {"download_link": new_link}}
+                )
+                fixed_count += 1
+        
+        return {
+            "message": f"Fixed {fixed_count} download links",
+            "note": "If downloads still fail, please re-upload the files through admin panel"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fix links: {str(e)}")
+
 # ✅ Include all routers
 app.include_router(api_router)
 

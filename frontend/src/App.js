@@ -837,6 +837,51 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
     setIsCheckoutLoading(true);
     
     try {
+      // Check if all products are free
+      const allFree = cart.items.every(item => item.product.price === 0);
+      
+      if (allFree) {
+        // Handle free products - no payment needed
+        const cartItems = cart.items.map(item => ({
+          id: item.product.id,
+          quantity: item.quantity || 1
+        }));
+        
+        let claimData = {};
+        let headers = {};
+        
+        if (clerkUser) {
+          claimData = {
+            clerk_id: clerkUser.id,
+            cart_items: cartItems
+          };
+        } else if (token) {
+          headers = { Authorization: `Bearer ${token}` };
+        }
+        
+        const response = await axios.post(
+          `${API}/orders/claim-free`,
+          claimData,
+          { headers }
+        );
+        
+        // Clear Clerk user's localStorage cart
+        if (clerkUser) {
+          localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify([]));
+        }
+        
+        sonnerToast.success('🎉 Free products claimed successfully! Check your dashboard.');
+        setIsCheckoutLoading(false);
+        
+        // Redirect to dashboard after a short delay
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
+        
+        return;
+      }
+      
+      // Handle paid products - proceed with Razorpay
       let response;
       
       if (clerkUser) {

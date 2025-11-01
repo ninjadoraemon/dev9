@@ -693,6 +693,30 @@ async def get_clerk_purchased_products(clerk_id: str):
     return products
 
 # Admin Routes
+@api_router.get("/download/{product_id}")
+async def download_product(product_id: str):
+    """
+    Proxy endpoint to serve product download files.
+    Helps bypass Cloudinary access issues.
+    """
+    try:
+        # Get product
+        product = await db.products.find_one({"id": product_id}, {"_id": 0})
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        download_url = product.get('download_link')
+        if not download_url:
+            raise HTTPException(status_code=404, detail="Download link not available")
+        
+        # For now, just redirect to the Cloudinary URL
+        # In production, you might want to fetch and stream the file
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=download_url)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+
+# Admin Routes
 @api_router.post("/admin/upload")
 async def upload_file(
     file: UploadFile = File(...),

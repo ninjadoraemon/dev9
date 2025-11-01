@@ -883,7 +883,8 @@ async def admin_update_product(
             file_result = cloudinary.uploader.upload(
                 download_file.file,
                 folder="ecommerce/downloads",
-                resource_type="raw"  # Use 'raw' for PDFs and other documents
+                resource_type="raw",  # Use 'raw' for PDFs and other documents
+                access_mode="public"  # Make file publicly accessible
             )
             update_data['download_link'] = file_result['secure_url']
         

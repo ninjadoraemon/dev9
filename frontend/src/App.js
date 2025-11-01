@@ -1226,7 +1226,7 @@ const DashboardPage = ({ clerkUser, user, token }) => {
                     <CardFooter className="flex gap-2">
                       <Button
                         className="flex-1"
-                        onClick={() => window.open(product.download_link, '_blank')}
+                        onClick={() => window.open(`${API}/download/${product.id}`, '_blank')}
                         data-testid={`download-${product.id}`}
                       >
                         <Download className="w-4 h-4 mr-2" />

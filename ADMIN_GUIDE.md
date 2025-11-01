@@ -150,7 +150,7 @@ CLOUDINARY_URL=cloudinary://454177812827398:nUJL9QABXjQgmbMyKTId_laog74@dwvx9kg8
 
 **Frontend (.env):**
 ```
-REACT_APP_BACKEND_URL=https://payment-ui-repair-1.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://product-checkout-4.preview.emergentagent.com
 ```
 
 ---

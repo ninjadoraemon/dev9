@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AnoAI from './components/ui/animated-shader-background'
+import AnoAI from './components/ui/animated-shader-background';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
 import { ClerkProvider, SignIn, SignUp, UserButton, useUser, SignedIn, SignedOut } from '@clerk/clerk-react';
 import axios from 'axios';
@@ -116,36 +116,6 @@ const AppContent = () => {
 
 const Header = ({ user, clerkUser, logout }) => {
   const navigate = useNavigate();
-  const [cartCount, setCartCount] = useState(0);
-
-  // Fetch cart count when user is authenticated
-  useEffect(() => {
-    const fetchCartCount = async () => {
-      try {
-        if (clerkUser) {
-          const clerkCart = JSON.parse(localStorage.getItem(`clerk_cart_${clerkUser.id}`) || '[]');
-          setCartCount(clerkCart.length);
-        } else if (user && user.role !== 'admin') {
-          const token = localStorage.getItem('token');
-          if (token) {
-            const response = await axios.get(`${API}/cart`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            setCartCount(response.data.items?.length || 0);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching cart count:', error);
-      }
-    };
-
-    fetchCartCount();
-    
-    // Set up interval to update cart count periodically
-    const interval = setInterval(fetchCartCount, 2000);
-    
-    return () => clearInterval(interval);
-  }, [clerkUser, user]);
 
   return (
     <motion.header
@@ -171,14 +141,9 @@ const Header = ({ user, clerkUser, logout }) => {
           
           {/* Clerk Authentication for Regular Users */}
           <SignedIn>
-            <Link to="/cart" data-testid="cart-nav-link" className="relative">
+            <Link to="/cart" data-testid="cart-nav-link">
               <Button variant="ghost" size="sm">
                 <ShoppingCart className="w-4 h-4" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartCount}
-                  </span>
-                )}
               </Button>
             </Link>
             <Link to="/dashboard" data-testid="dashboard-nav-link">
@@ -292,7 +257,6 @@ const HomePage = () => {
 
   return (
     <div>
-      {/* Hero Section */}
       <div className="relative w-full h-screen overflow-hidden bg-black">
       {/* 🔮 Shader background */}
       <div className="absolute inset-0 z-0">
@@ -341,6 +305,9 @@ const HomePage = () => {
           </Link>
         </motion.div>
       </motion.section>
+    </div>
+  );
+};
 
       {/* Features Section */}
       <section className="bg-white py-20" data-testid="features-section">
@@ -830,7 +797,6 @@ const ProductDetailPage = ({ clerkUser, user, token, toast }) => {
 
 const CartPage = ({ clerkUser, user, token, toast }) => {
   const [cart, setCart] = useState({ items: [] });
-  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const navigate = useNavigate();
 
   const isAuthenticated = clerkUser || (user && token);
@@ -880,85 +846,17 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
   };
 
   const checkout = async () => {
-    if (cart.items.length === 0) {
-      sonnerToast.error('Your cart is empty');
+    if (clerkUser) {
+      sonnerToast.info('Clerk checkout coming soon! For now, admin users can process orders.');
       return;
     }
-
-    setIsCheckoutLoading(true);
     
     try {
-      // Check if all products are free
-      const allFree = cart.items.every(item => item.product.price === 0);
-      
-      if (allFree) {
-        // Handle free products - no payment needed
-        const cartItems = cart.items.map(item => ({
-          id: item.product.id,
-          quantity: item.quantity || 1
-        }));
-        
-        let claimData = {};
-        let headers = {};
-        
-        if (clerkUser) {
-          claimData = {
-            clerk_id: clerkUser.id,
-            cart_items: cartItems
-          };
-        } else if (token) {
-          headers = { Authorization: `Bearer ${token}` };
-        }
-        
-        const response = await axios.post(
-          `${API}/orders/claim-free`,
-          claimData,
-          { headers }
-        );
-        
-        // Clear Clerk user's localStorage cart
-        if (clerkUser) {
-          localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify([]));
-        }
-        
-        sonnerToast.success('🎉 Free products claimed successfully! Check your dashboard.');
-        setIsCheckoutLoading(false);
-        
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1500);
-        
-        return;
-      }
-      
-      // Handle paid products - proceed with Razorpay
-      let response;
-      
-      if (clerkUser) {
-        // Clerk user checkout - send cart items in request body
-        const cartItems = cart.items.map(item => ({
-          id: item.product.id,
-          quantity: item.quantity || 1
-        }));
-        
-        response = await axios.post(
-          `${API}/orders/create`,
-          {
-            clerk_id: clerkUser.id,
-            cart_items: cartItems
-          }
-        );
-      } else if (token) {
-        // JWT user checkout - cart is in backend
-        response = await axios.post(
-          `${API}/orders/create`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } else {
-        throw new Error('Authentication required');
-      }
+      const response = await axios.post(
+        `${API}/orders/create`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       const options = {
         key: response.data.key_id,
@@ -969,47 +867,20 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
         description: 'Digital Products Purchase',
         handler: async (razorpayResponse) => {
           try {
-            const verificationData = {
-              razorpay_order_id: razorpayResponse.razorpay_order_id,
-              razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-              razorpay_signature: razorpayResponse.razorpay_signature,
-              order_id: response.data.order_id
-            };
-
-            // Add clerk_id for Clerk users
-            if (clerkUser) {
-              verificationData.clerk_id = clerkUser.id;
-            }
-
-            if (token) {
-              await axios.post(
-                `${API}/orders/verify`,
-                verificationData,
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-            } else {
-              await axios.post(
-                `${API}/orders/verify`,
-                verificationData
-              );
-            }
-
-            // Clear Clerk user's localStorage cart
-            if (clerkUser) {
-              localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify([]));
-            }
-
-            sonnerToast.success('🎉 Payment successful! Your products are now available.');
-            setIsCheckoutLoading(false);
-            
-            // Redirect to dashboard after a short delay
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 1500);
+            await axios.post(
+              `${API}/orders/verify`,
+              {
+                razorpay_order_id: razorpayResponse.razorpay_order_id,
+                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                razorpay_signature: razorpayResponse.razorpay_signature,
+                order_id: response.data.order_id
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            sonnerToast.success('Payment successful!');
+            navigate('/dashboard');
           } catch (error) {
-            console.error('Payment verification error:', error);
-            sonnerToast.error('Payment verification failed. Please contact support if amount was deducted.');
-            setIsCheckoutLoading(false);
+            sonnerToast.error('Payment verification failed');
           }
         },
         prefill: {
@@ -1018,29 +889,13 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
         },
         theme: {
           color: '#0f172a'
-        },
-        modal: {
-          ondismiss: function() {
-            setIsCheckoutLoading(false);
-            sonnerToast.info('Payment cancelled');
-          }
         }
       };
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (error) {
-      console.error('Checkout error:', error);
-      setIsCheckoutLoading(false);
-      
-      if (error.response?.status === 400) {
-        sonnerToast.error(error.response.data.detail || 'Invalid cart data');
-      } else if (error.response?.status === 401) {
-        sonnerToast.error('Authentication required. Please sign in again.');
-        navigate('/signin');
-      } else {
-        sonnerToast.error('Checkout failed. Please try again or contact support.');
-      }
+      sonnerToast.error('Checkout failed');
     }
   };
 
@@ -1118,23 +973,8 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button 
-                  className="w-full" 
-                  onClick={checkout} 
-                  disabled={isCheckoutLoading || cart.items.length === 0}
-                  data-testid="checkout-button"
-                >
-                  {isCheckoutLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    'Proceed to Checkout'
-                  )}
+                <Button className="w-full" onClick={checkout} data-testid="checkout-button">
+                  Proceed to Checkout
                 </Button>
               </CardFooter>
             </Card>
@@ -1242,7 +1082,7 @@ const DashboardPage = ({ clerkUser, user, token }) => {
                     <CardFooter className="flex gap-2">
                       <Button
                         className="flex-1"
-                        onClick={() => window.open(`${API}/download/${product.id}`, '_blank')}
+                        onClick={() => window.open(product.download_link, '_blank')}
                         data-testid={`download-${product.id}`}
                       >
                         <Download className="w-4 h-4 mr-2" />

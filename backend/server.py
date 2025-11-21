@@ -1070,7 +1070,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",                 # Local development
-        "https://dev7-frontend.vercel.app",      # Replace with your actual Vercel URL
+        "https://dev7.vercel.app",      # Replace with your actual Vercel URL
     ],
     allow_credentials=True,
     allow_methods=["*"],

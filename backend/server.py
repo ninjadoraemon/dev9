@@ -1066,21 +1066,13 @@ async def fix_download_links(admin_user: dict = Depends(get_admin_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fix links: {str(e)}")
 
-# ✅ Include all routers
-app.include_router(api_router)
-
-# ✅ Safe, flexible CORS handling
-origins_env = os.environ.get("CORS_ORIGINS", "*")
-
-if origins_env == "*":
-    allow_origins = ["*"]
-else:
-    allow_origins = [origin.strip() for origin in origins_env.split(",")]
-
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",                 # Local development
+        "https://dev7-frontend.vercel.app",      # Replace with your actual Vercel URL
+    ],
     allow_credentials=True,
-    allow_origins=allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

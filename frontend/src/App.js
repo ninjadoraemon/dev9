@@ -37,6 +37,7 @@ const AppContent = () => {
   const { toast } = useToast();
   const { user: clerkUser, isLoaded } = useUser();
   const [clerkSynced, setClerkSynced] = useState(false);
+  const [cart, setCart] = useState([]);
 
   // Wrap logout in useCallback to be stable for useEffect dependencies
   const logout = React.useCallback(() => {
@@ -47,6 +48,7 @@ const AppContent = () => {
     if (clerkUser) {
       localStorage.removeItem(`clerk_cart_${clerkUser.id}`);
     }
+    setCart([]);
   }, [clerkUser]);
 
   // Global Axios Interceptor for 401 Unauthorized
@@ -98,6 +100,30 @@ const AppContent = () => {
     syncClerkUser();
   }, [isLoaded, clerkUser, clerkSynced]);
 
+  // Fetch cart when user/token changes
+  useEffect(() => {
+    if (clerkUser || (user && token)) {
+      fetchCart();
+    }
+  }, [clerkUser, user, token]);
+
+  const fetchCart = async () => {
+    try {
+      // For Clerk users, use email-based cart (we'll store in localStorage temporarily)
+      if (clerkUser) {
+        const clerkCart = JSON.parse(localStorage.getItem(`clerk_cart_${clerkUser.id}`) || '[]');
+        setCart(clerkCart);
+      } else if (token) {
+        const response = await axios.get(`${API}/cart`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setCart(response.data.items || []);
+      }
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+    }
+  };
+
   const fetchUser = async () => {
     try {
       const response = await axios.get(`${API}/auth/me`, {
@@ -120,12 +146,12 @@ const AppContent = () => {
         {/* Main App with Header */}
         <Route path="*" element={
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-            <Header user={user} clerkUser={clerkUser} logout={logout} />
+            <Header user={user} clerkUser={clerkUser} logout={logout} cart={cart} />
             <Routes>
               <Route path="/" element={<HomePage />} />
-              <Route path="/products" element={<ProductsPage clerkUser={clerkUser} user={user} token={token} toast={toast} />} />
-              <Route path="/product/:id" element={<ProductDetailPage clerkUser={clerkUser} user={user} token={token} toast={toast} />} />
-              <Route path="/cart" element={<CartPage clerkUser={clerkUser} user={user} token={token} toast={toast} />} />
+              <Route path="/products" element={<ProductsPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
+              <Route path="/product/:id" element={<ProductDetailPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
+              <Route path="/cart" element={<CartPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
               <Route path="/dashboard" element={<DashboardPage clerkUser={clerkUser} user={user} token={token} />} />
               <Route path="/admin" element={<AdminLogin setToken={setToken} toast={toast} />} />
               <Route path="/admin/dashboard" element={<AdminDashboard user={user} token={token} toast={toast} />} />
@@ -138,10 +164,11 @@ const AppContent = () => {
   );
 };
 
-const Header = ({ user, clerkUser, logout }) => {
+const Header = ({ user, clerkUser, logout, cart }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const cartItemCount = cart?.length || 0;
 
   return (
     <motion.header
@@ -167,9 +194,14 @@ const Header = ({ user, clerkUser, logout }) => {
 
           {/* Clerk Authentication for Regular Users */}
           <SignedIn>
-            <Link to="/cart" data-testid="cart-nav-link">
+            <Link to="/cart" data-testid="cart-nav-link" className="relative">
               <Button variant="ghost" size="sm">
                 <ShoppingCart className="w-4 h-4" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
               </Button>
             </Link>
             <Link to="/dashboard" data-testid="dashboard-nav-link">
@@ -460,10 +492,9 @@ const AuthPage = ({ setToken, toast }) => {
   );
 };
 
-const ProductsPage = ({ clerkUser, user, token, toast }) => {
+const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart }) => {
   const [products, setProducts] = useState([]);
   const [category, setCategory] = useState('all');
-  const [cart, setCart] = useState([]);
   const navigate = useNavigate();
 
   // Get authentication - prioritize Clerk for regular users
@@ -472,9 +503,6 @@ const ProductsPage = ({ clerkUser, user, token, toast }) => {
 
   useEffect(() => {
     fetchProducts();
-    if (isAuthenticated) {
-      fetchCart();
-    }
   }, [category, clerkUser, token]);
 
   const fetchProducts = async () => {
@@ -487,28 +515,8 @@ const ProductsPage = ({ clerkUser, user, token, toast }) => {
     }
   };
 
-  const fetchCart = async () => {
-    try {
-      // For Clerk users, use email-based cart (we'll store in localStorage temporarily)
-      if (clerkUser) {
-        const clerkCart = JSON.parse(localStorage.getItem(`clerk_cart_${clerkUser.id}`) || '[]');
-        setCart(clerkCart);
-      } else if (token) {
-        const response = await axios.get(`${API}/cart`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setCart(response.data.items || []);
-      }
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-    }
-  };
-
   const isInCart = (productId) => {
-    if (clerkUser) {
-      return cart.some(item => item.id === productId);
-    }
-    return cart.some(item => item.product?.id === productId);
+    return Array.isArray(cart) && cart.some(item => item.product?.id === productId);
   };
 
   const addToCart = async (productId) => {
@@ -527,7 +535,7 @@ const ProductsPage = ({ clerkUser, user, token, toast }) => {
       if (clerkUser) {
         // For Clerk users, use localStorage cart
         const product = products.find(p => p.id === productId);
-        const newCart = [...cart, { ...product, quantity: 1 }];
+        const newCart = [...cart, { product: product, quantity: 1 }];
         localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify(newCart));
         setCart(newCart);
         sonnerToast.success('Added to cart! 🎉', {
@@ -642,19 +650,15 @@ const ProductsPage = ({ clerkUser, user, token, toast }) => {
   );
 };
 
-const ProductDetailPage = ({ clerkUser, user, token, toast }) => {
+const ProductDetailPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart }) => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
-  const [isInCart, setIsInCart] = useState(false);
   const navigate = useNavigate();
 
   const isAuthenticated = clerkUser || (user && token);
 
   useEffect(() => {
     fetchProduct();
-    if (isAuthenticated) {
-      checkIfInCart();
-    }
   }, [id, clerkUser, token]);
 
   const fetchProduct = async () => {
@@ -666,23 +670,12 @@ const ProductDetailPage = ({ clerkUser, user, token, toast }) => {
     }
   };
 
-  const checkIfInCart = async () => {
-    try {
-      if (clerkUser) {
-        const clerkCart = JSON.parse(localStorage.getItem(`clerk_cart_${clerkUser.id}`) || '[]');
-        const inCart = clerkCart.some(item => item.id === id);
-        setIsInCart(inCart);
-      } else if (token) {
-        const response = await axios.get(`${API}/cart`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const inCart = response.data.items?.some(item => item.product?.id === id);
-        setIsInCart(inCart);
-      }
-    } catch (error) {
-      console.error('Error checking cart:', error);
-    }
+  const checkIsInCart = () => {
+    if (!cart) return false;
+    return cart.some(item => item.product?.id === id);
   };
+
+  const isInCart = checkIsInCart();
 
   const addToCart = async () => {
     if (!isAuthenticated) {
@@ -699,14 +692,13 @@ const ProductDetailPage = ({ clerkUser, user, token, toast }) => {
 
     try {
       if (clerkUser) {
-        const clerkCart = JSON.parse(localStorage.getItem(`clerk_cart_${clerkUser.id}`) || '[]');
-        clerkCart.push({ ...product, quantity: 1 });
+        const clerkCart = [...cart, { product: product, quantity: 1 }];
         localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify(clerkCart));
+        setCart(clerkCart);
         sonnerToast.success('Added to cart! 🎉', {
           description: 'Product has been added to your cart',
           duration: 2000,
         });
-        setIsInCart(true);
         setTimeout(() => navigate('/cart'), 1500);
       } else if (token) {
         await axios.post(
@@ -718,13 +710,12 @@ const ProductDetailPage = ({ clerkUser, user, token, toast }) => {
           description: 'Product has been added to your cart',
           duration: 2000,
         });
-        setIsInCart(true);
+        fetchCart();
         setTimeout(() => navigate('/cart'), 1500);
       }
     } catch (error) {
       if (error.response?.status === 400) {
         sonnerToast.info('Product already in cart');
-        setIsInCart(true);
       } else {
         sonnerToast.error('Error adding to cart');
       }
@@ -819,8 +810,7 @@ const ProductDetailPage = ({ clerkUser, user, token, toast }) => {
   );
 };
 
-const CartPage = ({ clerkUser, user, token, toast }) => {
-  const [cart, setCart] = useState({ items: [] });
+const CartPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart }) => {
   const navigate = useNavigate();
 
   const isAuthenticated = clerkUser || (user && token);
@@ -828,35 +818,16 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/signin');
-      return;
     }
-    fetchCart();
   }, [clerkUser, token]);
-
-  const fetchCart = async () => {
-    try {
-      if (clerkUser) {
-        const clerkCart = JSON.parse(localStorage.getItem(`clerk_cart_${clerkUser.id}`) || '[]');
-        setCart({ items: clerkCart.map(item => ({ product: item, quantity: item.quantity || 1 })) });
-      } else if (token) {
-        const response = await axios.get(`${API}/cart`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setCart(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-    }
-  };
 
   const removeItem = async (productId) => {
     try {
       if (clerkUser) {
-        const clerkCart = JSON.parse(localStorage.getItem(`clerk_cart_${clerkUser.id}`) || '[]');
-        const newCart = clerkCart.filter(item => item.id !== productId);
+        const newCart = cart.filter(item => item.product?.id !== productId);
         localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify(newCart));
+        setCart(newCart);
         sonnerToast.success('Item removed from cart');
-        fetchCart();
       } else if (token) {
         await axios.delete(`${API}/cart/remove/${productId}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -876,7 +847,8 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
 
       if (clerkUser) {
         // Prepare cart items for Clerk order
-        const cartItems = cart.items.map(item => ({
+        const validItems = Array.isArray(cart) ? cart.filter(item => item && item.product) : [];
+        const cartItems = validItems.map(item => ({
           product_id: item.product.id,
           quantity: item.quantity
         }));
@@ -924,7 +896,10 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
             // Clear cart after successful payment
             if (clerkUser) {
               localStorage.removeItem(`clerk_cart_${clerkUser.id}`);
-              setCart({ items: [] });
+              setCart([]);
+            } else {
+              // For token users, fetch empty cart
+              fetchCart();
             }
 
             sonnerToast.success('Payment successful!');
@@ -951,13 +926,14 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
     }
   };
 
-  const total = cart.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const validItems = Array.isArray(cart) ? cart.filter(item => item && item.product) : [];
+  const total = validItems.reduce((sum, item) => sum + ((item.product?.price || 0) * (item.quantity || 1)), 0);
 
   return (
     <div className="container mx-auto px-4 py-12" data-testid="cart-page">
       <h1 className="text-4xl font-bold mb-8">Shopping Cart</h1>
 
-      {cart.items.length === 0 ? (
+      {validItems.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-slate-600 mb-4">Your cart is empty</p>
@@ -969,7 +945,7 @@ const CartPage = ({ clerkUser, user, token, toast }) => {
       ) : (
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-4">
-            {cart.items.map((item) => (
+            {validItems.map((item) => (
               <motion.div
                 key={item.product.id}
                 initial={{ opacity: 0, x: -20 }}

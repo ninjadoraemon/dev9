@@ -28,7 +28,33 @@
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
+}
+
+/* Header with no background - just white text */
+.header-low-opacity {
+    background: transparent !important;
+}
+
+.header-low-opacity a,
+.header-low-opacity span,
+.header-low-opacity div {
+    color: white !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.header-low-opacity button {
+    color: white !important;
+}
+
+.header-low-opacity button:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Make sure Clerk button is visible */
+.header-low-opacity .cl-userButtonTrigger {
+    color: white !important;
 }

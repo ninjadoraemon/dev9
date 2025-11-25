@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AnoAI from './components/ui/animated-shader-background';
-import { BrowserRouter, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ClerkProvider, SignIn, SignUp, UserButton, useUser, SignedIn, SignedOut } from '@clerk/clerk-react';
 import axios from 'axios';
 import { motion, useScroll, useTransform } from 'framer-motion';
@@ -140,12 +140,14 @@ const AppContent = () => {
 
 const Header = ({ user, clerkUser, logout }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
 
   return (
     <motion.header
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className="bg-white shadow-sm sticky top-0 z-50"
+      className={`${isHomePage ? 'header-low-opacity' : 'bg-white'} shadow-sm sticky top-0 z-50`}
     >
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link to="/" className="text-2xl font-bold text-slate-900" data-testid="logo-link">
@@ -281,13 +283,13 @@ const HomePage = () => {
 
   return (
     <div>
-      <div className="relative w-full h-screen overflow-hidden bg-black">
-        {/* 🔮 Shader background */}
-        <div className="absolute inset-0 z-0">
-          <AnoAI />
-        </div>
+      {/* 🔮 Fixed Shader background - extends behind header */}
+      <div className="fixed inset-0 z-0 bg-black">
+        <AnoAI />
+      </div>
 
-        {/* 🌟 Foreground content */}
+      {/* 🌟 Foreground content */}
+      <div className="relative w-full h-screen">
         <motion.section
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -330,11 +332,9 @@ const HomePage = () => {
           </motion.div>
         </motion.section>
       </div>
-      );
-};
 
       {/* Features Section */}
-      <section className="bg-white py-20" data-testid="features-section">
+      <section className="bg-white py-20 relative z-10" data-testid="features-section">
         <div className="container mx-auto px-4">
           <motion.h2
             initial={{ opacity: 0 }}

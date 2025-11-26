@@ -178,7 +178,7 @@ const Header = ({ user, clerkUser, logout, cart }) => {
     >
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link to="/" className="text-2xl font-bold text-slate-900" data-testid="logo-link">
-          DigitalStore
+          Nexura
         </Link>
         <nav className="flex items-center gap-6">
           <Link to="/products" className="text-slate-600 hover:text-slate-900" data-testid="products-nav-link">

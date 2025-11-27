@@ -86,9 +86,9 @@ const Footer = () => {
                         <p>
                             © {new Date().getFullYear()} Nexura. All rights reserved.
                         </p>
-                        <p>
+                        {/* <p>
                             GARIGANTI JASWANTH CHANDRA
-                        </p>
+                        </p> */}
                     </div>
                 </div>
             </div>

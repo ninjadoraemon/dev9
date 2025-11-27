@@ -14,6 +14,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/sonner';
 import { toast as sonnerToast } from 'sonner';
 import AdvancedVideoPlayer from '@/components/AdvancedVideoPlayer';
+import PrivacyPolicy from '@/components/PrivacyPolicy';
+import TermsAndConditions from '@/components/TermsAndConditions';
+import RefundPolicy from '@/components/RefundPolicy';
+import ContactUs from '@/components/ContactUs';
+import AboutUs from '@/components/AboutUs';
+import Footer from '@/components/Footer';
 import '@/App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -145,17 +151,25 @@ const AppContent = () => {
 
         {/* Main App with Header */}
         <Route path="*" element={
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
             <Header user={user} clerkUser={clerkUser} logout={logout} cart={cart} />
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/products" element={<ProductsPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
-              <Route path="/product/:id" element={<ProductDetailPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
-              <Route path="/cart" element={<CartPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
-              <Route path="/dashboard" element={<DashboardPage clerkUser={clerkUser} user={user} token={token} />} />
-              <Route path="/admin" element={<AdminLogin setToken={setToken} toast={toast} />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard user={user} token={token} toast={toast} />} />
-            </Routes>
+            <div className="flex-grow">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/products" element={<ProductsPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
+                <Route path="/product/:id" element={<ProductDetailPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
+                <Route path="/cart" element={<CartPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
+                <Route path="/dashboard" element={<DashboardPage clerkUser={clerkUser} user={user} token={token} />} />
+                <Route path="/admin" element={<AdminLogin setToken={setToken} toast={toast} />} />
+                <Route path="/admin/dashboard" element={<AdminDashboard user={user} token={token} toast={toast} />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/contact" element={<ContactUs />} />
+                <Route path="/about" element={<AboutUs />} />
+              </Routes>
+            </div>
+            <Footer />
             <Toaster />
           </div>
         } />
@@ -177,17 +191,17 @@ const Header = ({ user, clerkUser, logout, cart }) => {
       className={`${isHomePage ? 'header-low-opacity' : 'bg-white'} shadow-sm sticky top-0 z-50`}
     >
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <Link to="/" className="text-2xl font-bold text-slate-900" data-testid="logo-link">
+        <Link to="/" className={`text-2xl font-bold ${isHomePage ? 'text-white' : 'text-slate-900'}`} data-testid="logo-link">
           Nexura
         </Link>
         <nav className="flex items-center gap-6">
-          <Link to="/products" className="text-slate-600 hover:text-slate-900" data-testid="products-nav-link">
+          <Link to="/products" className={`${isHomePage ? 'text-white hover:text-gray-200' : 'text-slate-600 hover:text-slate-900'}`} data-testid="products-nav-link">
             Products
           </Link>
 
           {/* Admin Panel Link (JWT Admin Only) */}
           {user?.role === 'admin' && (
-            <Link to="/admin/dashboard" className="text-slate-600 hover:text-slate-900">
+            <Link to="/admin/dashboard" className={`${isHomePage ? 'text-white hover:text-gray-200' : 'text-slate-600 hover:text-slate-900'}`}>
               Admin Panel
             </Link>
           )}
@@ -314,14 +328,15 @@ const HomePage = () => {
   const scale = useTransform(scrollYProgress, [0, 0.3], [1, 0.8]);
 
   return (
-    <div>
-      {/* 🔮 Fixed Shader background - extends behind header */}
-      <div className="fixed inset-0 z-0 bg-black">
-        <AnoAI />
-      </div>
+    <div className="relative">
+      {/* Hero Section with Animated Background */}
+      <div className="relative h-screen">
+        {/* 🔮 Animated background - fixed to cover viewport including header */}
+        <div className="fixed top-0 left-0 right-0 bottom-0 z-0 bg-black">
+          <AnoAI />
+        </div>
 
-      {/* 🌟 Foreground content */}
-      <div className="relative w-full h-screen">
+        {/* 🌟 Hero content */}
         <motion.section
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}

@@ -106,7 +106,7 @@ const PrivacyPolicy = () => {
                             <section className="mt-8 p-4 bg-slate-100 rounded-lg">
                                 <p className="text-sm">
                                     <strong>Business Information:</strong><br />
-                                    GARIGANTI JASWANTH CHANDRA<br />
+                                    JASWANTH CHANDRA<br />
                                     Erragada, Hyderabad<br />
                                     Telangana 500018, India
                                 </p>

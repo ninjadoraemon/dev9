@@ -18,13 +18,13 @@ const TermsAndConditions = () => {
                     <CardContent className="prose max-w-none">
                         <div className="space-y-6 text-slate-700">
                             <section>
-                                <p>
+                                {/* <p>
                                     For the purpose of these Terms and Conditions, the term "we", "us", "our" used
                                     anywhere on this page shall mean <strong>GARIGANTI JASWANTH CHANDRA</strong>, whose
                                     registered/operational office is Erragada, Hyderabad, Telangana 500018. "you", "your",
                                     "user", "visitor" shall mean any natural or legal person who is visiting our website
                                     and/or agreed to purchase from us.
-                                </p>
+                                </p> */}
                             </section>
 
                             <section>
@@ -83,7 +83,7 @@ const TermsAndConditions = () => {
                                 </p>
                                 <p className="mt-4">
                                     You may not create a link to our website from another website or document without
-                                    GARIGANTI JASWANTH CHANDRA's prior written consent.
+                                     JASWANTH CHANDRA's prior written consent.
                                 </p>
                             </section>
 

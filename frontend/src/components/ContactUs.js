@@ -40,7 +40,7 @@ const ContactUs = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-slate-700 font-semibold mb-2">GARIGANTI JASWANTH CHANDRA</p>
+                            <p className="text-slate-700 font-semibold mb-2">JASWANTH CHANDRA</p>
                             <div className="flex items-start gap-2 text-slate-600">
                                 <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
                                 <div>

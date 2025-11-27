@@ -143,7 +143,7 @@ const AboutUs = () => {
                             <div className="bg-slate-100 p-4 rounded-lg">
                                 <p className="text-sm">
                                     <strong>Business Information:</strong><br />
-                                    GARIGANTI JASWANTH CHANDRA<br />
+                                    JASWANTH CHANDRA<br />
                                     Erragada, Hyderabad<br />
                                     Telangana 500018, India<br />
                                     <a href="mailto:talentedboyzzz567@gmail.com" className="text-blue-600 hover:underline">

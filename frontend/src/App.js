@@ -44,6 +44,7 @@ const AppContent = () => {
   const { user: clerkUser, isLoaded } = useUser();
   const [clerkSynced, setClerkSynced] = useState(false);
   const [cart, setCart] = useState([]);
+  const [cartHighlight, setCartHighlight] = useState(false);
 
   // Wrap logout in useCallback to be stable for useEffect dependencies
   const logout = React.useCallback(() => {
@@ -152,13 +153,13 @@ const AppContent = () => {
         {/* Main App with Header */}
         <Route path="*" element={
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
-            <Header user={user} clerkUser={clerkUser} logout={logout} cart={cart} />
+            <Header user={user} clerkUser={clerkUser} logout={logout} cart={cart} cartHighlight={cartHighlight} />
             <div className="flex-grow">
               <Routes>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/products" element={<ProductsPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
-                <Route path="/product/:id" element={<ProductDetailPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
-                <Route path="/cart" element={<CartPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} />} />
+                <Route path="/products" element={<ProductsPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} setCartHighlight={setCartHighlight} />} />
+                <Route path="/product/:id" element={<ProductDetailPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} setCartHighlight={setCartHighlight} />} />
+                <Route path="/cart" element={<CartPage clerkUser={clerkUser} user={user} token={token} toast={toast} cart={cart} setCart={setCart} fetchCart={fetchCart} setCartHighlight={setCartHighlight} />} />
                 <Route path="/dashboard" element={<DashboardPage clerkUser={clerkUser} user={user} token={token} />} />
                 <Route path="/admin" element={<AdminLogin setToken={setToken} toast={toast} />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard user={user} token={token} toast={toast} />} />
@@ -178,7 +179,7 @@ const AppContent = () => {
   );
 };
 
-const Header = ({ user, clerkUser, logout, cart }) => {
+const Header = ({ user, clerkUser, logout, cart, cartHighlight }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isHomePage = location.pathname === '/';
@@ -210,7 +211,9 @@ const Header = ({ user, clerkUser, logout, cart }) => {
           <SignedIn>
             <Link to="/cart" data-testid="cart-nav-link" className="relative">
               <Button variant="ghost" size="sm">
-                <ShoppingCart className="w-4 h-4" />
+                <div className={`cart-icon-wrapper ${cartHighlight ? 'cart-highlight' : ''}`}>
+                  <ShoppingCart className="w-4 h-4" />
+                </div>
                 {cartItemCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
                     {cartItemCount}
@@ -507,7 +510,7 @@ const AuthPage = ({ setToken, toast }) => {
   );
 };
 
-const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart }) => {
+const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart, setCartHighlight }) => {
   const [products, setProducts] = useState([]);
   const [category, setCategory] = useState('all');
   const navigate = useNavigate();
@@ -553,6 +556,10 @@ const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart 
         const newCart = [...cart, { product: product, quantity: 1 }];
         localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify(newCart));
         setCart(newCart);
+
+        setCartHighlight(true);
+        setTimeout(() => setCartHighlight(false), 600);
+
         sonnerToast.success('Added to cart! 🎉', {
           description: 'Product has been added to your cart',
           duration: 2000,
@@ -563,6 +570,10 @@ const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart 
           { product_id: productId, quantity: 1 },
           { headers: { Authorization: `Bearer ${token}` } }
         );
+
+        setCartHighlight(true);
+        setTimeout(() => setCartHighlight(false), 600);
+
         sonnerToast.success('Added to cart! 🎉', {
           description: 'Product has been added to your cart',
           duration: 2000,
@@ -665,7 +676,7 @@ const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart 
   );
 };
 
-const ProductDetailPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart }) => {
+const ProductDetailPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart, setCartHighlight }) => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const navigate = useNavigate();
@@ -710,6 +721,10 @@ const ProductDetailPage = ({ clerkUser, user, token, toast, cart, setCart, fetch
         const clerkCart = [...cart, { product: product, quantity: 1 }];
         localStorage.setItem(`clerk_cart_${clerkUser.id}`, JSON.stringify(clerkCart));
         setCart(clerkCart);
+
+        setCartHighlight(true);
+        setTimeout(() => setCartHighlight(false), 600);
+
         sonnerToast.success('Added to cart! 🎉', {
           description: 'Product has been added to your cart',
           duration: 2000,
@@ -721,6 +736,10 @@ const ProductDetailPage = ({ clerkUser, user, token, toast, cart, setCart, fetch
           { product_id: id, quantity: 1 },
           { headers: { Authorization: `Bearer ${token}` } }
         );
+
+        setCartHighlight(true);
+        setTimeout(() => setCartHighlight(false), 600);
+
         sonnerToast.success('Added to cart! 🎉', {
           description: 'Product has been added to your cart',
           duration: 2000,
@@ -825,7 +844,7 @@ const ProductDetailPage = ({ clerkUser, user, token, toast, cart, setCart, fetch
   );
 };
 
-const CartPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart }) => {
+const CartPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart, setCartHighlight }) => {
   const navigate = useNavigate();
 
   const isAuthenticated = clerkUser || (user && token);
@@ -917,8 +936,16 @@ const CartPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart }) =
               fetchCart();
             }
 
-            sonnerToast.success('Payment successful!');
-            navigate('/dashboard');
+            sonnerToast.success('Payment successful! 🎉', {
+              description: 'Your order has been placed successfully',
+              duration: 5000,
+              action: {
+                label: 'View My Products',
+                onClick: () => navigate('/dashboard')
+              }
+            });
+
+            setTimeout(() => navigate('/dashboard'), 2000);
           } catch (error) {
             console.error('Payment verification error:', error);
             sonnerToast.error('Payment verification failed');

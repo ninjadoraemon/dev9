@@ -907,6 +907,29 @@ const CartPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart, set
         { headers }
       );
 
+      // Handle free orders (amount === 0)
+      if (response.data.amount === 0 || response.data.status === 'paid') {
+        // Clear cart after free order
+        if (clerkUser) {
+          localStorage.removeItem(`clerk_cart_${clerkUser.id}`);
+          setCart([]);
+        } else {
+          fetchCart();
+        }
+
+        sonnerToast.success('Order successful! 🎉', {
+          description: 'Your free products are now available',
+          duration: 5000,
+          action: {
+            label: 'View My Products',
+            onClick: () => navigate('/dashboard')
+          }
+        });
+
+        setTimeout(() => navigate('/dashboard'), 2000);
+        return;
+      }
+
       const options = {
         key: response.data.key_id,
         amount: response.data.amount * 100,

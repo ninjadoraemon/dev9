@@ -20,7 +20,7 @@ import RefundPolicy from '@/components/RefundPolicy';
 import ContactUs from '@/components/ContactUs';
 import AboutUs from '@/components/AboutUs';
 import Footer from '@/components/Footer';
-import LoadingLines from '@/components/ui/loading-lines';
+import { LoadingLines } from '@/components/ui/loading-lines';
 
 import '@/App.css';
 

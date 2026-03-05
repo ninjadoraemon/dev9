@@ -20,6 +20,8 @@ import RefundPolicy from '@/components/RefundPolicy';
 import ContactUs from '@/components/ContactUs';
 import AboutUs from '@/components/AboutUs';
 import Footer from '@/components/Footer';
+import LoadingLines from '@/components/loading-lines';
+
 import '@/App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -512,6 +514,7 @@ const AuthPage = ({ setToken, toast }) => {
 
 const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart, setCartHighlight }) => {
   const [products, setProducts] = useState([]);
+  const [loading,setLoading]=useState(true);
   const [category, setCategory] = useState('all');
   const navigate = useNavigate();
 
@@ -524,14 +527,23 @@ const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart,
   }, [category, clerkUser, token]);
 
   const fetchProducts = async () => {
-    try {
-      const url = category === 'all' ? `${API}/products` : `${API}/products?category=${category}`;
-      const response = await axios.get(url);
-      setProducts(response.data);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
-  };
+  try {
+    setLoading(true);
+
+    const url =
+      category === "all"
+        ? `${API}/products`
+        : `${API}/products?category=${category}`;
+
+    const response = await axios.get(url);
+
+    setProducts(response.data);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const isInCart = (productId) => {
     return Array.isArray(cart) && cart.some(item => item.product?.id === productId);
@@ -607,8 +619,13 @@ const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart,
         </TabsList>
       </Tabs>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {products.map((product, index) => (
+      {loading ? (
+  <div className="flex justify-center items-center py-20">
+    <LoadingLines />
+  </div>
+) : (
+  <div className="grid md:grid-cols-3 gap-6">
+    {products.map((product, index) => (
           <motion.div
             key={product.id}
             initial={{ opacity: 0, y: 50 }}

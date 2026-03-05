@@ -73,7 +73,7 @@ const Footer = () => {
                                 </a>
                             </div>
                             <div className="text-slate-400">
-                                <p>Erragada, Hyderabad</p>
+                                <p>Hyderabad</p>
                                 <p>Telangana 500018, India</p>
                             </div>
                         </div>

@@ -689,6 +689,7 @@ const ProductsPage = ({ clerkUser, user, token, toast, cart, setCart, fetchCart,
           </motion.div>
         ))}
       </div>
+)}
     </div>
   );
 };
